@@ -1,4 +1,5 @@
 import hashlib
+import json
 from pathlib import Path
 from typing import Any, Dict, Iterable, Tuple, Union
 
@@ -88,6 +89,20 @@ def hash_string(s: str) -> str:
         (str): The hashed string.
     """
     return hashlib.sha1(s.encode("utf-8")).hexdigest()
+
+
+def load_json_to_dict(json_path: Union[str, Path]) -> dict:
+    """Load json file to a dictionary.
+
+    Parameters:
+        json_path (str): The path to the json file.
+
+    Returns:
+        (dict): The dictionary representation of the json file.
+    """
+    with open(json_path, "r") as f:
+        data = json.load(f)
+    return data
 
 
 def load_json(json_path: Union[str, Path]) -> str:
