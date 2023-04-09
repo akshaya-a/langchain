@@ -43,6 +43,8 @@ def analyze_text(
     visualize: bool = True,
     nlp: Any = None,
     output_dir: Optional[Union[str, Path]] = None,
+    mlflow_client = None,
+    run_id = None
 ) -> dict:
     """Analyze text using textstat and spacy.
 
@@ -96,6 +98,8 @@ def analyze_text(
         ent_output_path = Path(output_dir, hash_string(f"ent-{text}") + ".html")
         ent_output_path.open("w", encoding="utf-8").write(ent_out)
 
+        mlflow_client.log_artifact(run_id, dep_output_path, "dependency_tree")
+        mlflow_client.log_artifact(run_id, ent_output_path, "entities")
         text_visualizations = {
             "dependency_tree": str(dep_output_path),
             "entities": str(ent_output_path),
@@ -310,6 +314,8 @@ class MLflowCallbackHandler(BaseMetadataCallbackHandler, BaseCallbackHandler):
                         visualize=self.visualize,
                         nlp=self.nlp,
                         output_dir=self.temp_dir.name,
+                        mlflow_client=self.mlflow_client,
+                        run_id = self.mlflow_run.info.run_id
                     )
                 )
                 self.on_llm_end_records.append(generation_resp)
