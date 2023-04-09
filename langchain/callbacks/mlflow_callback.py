@@ -145,18 +145,18 @@ def save_model(langchain_asset, path, mlflow_model=None, metadata=None, action_r
 
     from mlflow.models import Model
     from mlflow.models.model import MLMODEL_FILE_NAME
-    from utils import load_json_to_dict
+    from .utils import load_json_to_dict
     mlflow_model = Model()
     mlflow_model.metadata = load_json_to_dict(langchain_asset_path)
     # Replace these with incoming charts
     art_name = "action_records.csv"
     sat_name = "session_analysis.csv"
-    if action_records:
+    if action_records is not None:
         action_records.to_csv(Path(path, art_name))
         mlflow_model.metadata.update({
             "action_records": art_name
         })
-    if session_analysis:
+    if session_analysis is not None:
         session_analysis.to_csv(Path(path, sat_name))
         mlflow_model.metadata.update({
             "session_analysis": sat_name
@@ -303,6 +303,7 @@ class MLflowCallbackHandler(BaseMetadataCallbackHandler, BaseCallbackHandler):
                 generation_resp = deepcopy(resp)
                 generation_resp.update(flatten_dict(generation.dict()))
                 generation_resp.update(
+                    # TODO: I'm leaking these outputs - save in the same model or separate artifacts?
                     analyze_text(
                         generation.text,
                         complexity_metrics=self.complexity_metrics,
@@ -504,6 +505,7 @@ class MLflowCallbackHandler(BaseMetadataCallbackHandler, BaseCallbackHandler):
         if self.visualize:
             visualizations_columns = ["dependency_tree", "entities"]
 
+        module_logger.debug("%s", on_llm_end_records_df)
         llm_outputs_df = (
             on_llm_end_records_df[
                 [
@@ -520,6 +522,7 @@ class MLflowCallbackHandler(BaseMetadataCallbackHandler, BaseCallbackHandler):
             .rename({"step": "output_step", "text": "output"}, axis=1)
         )
         session_analysis_df = pd.concat([llm_input_prompts_df, llm_outputs_df], axis=1)
+        module_logger.debug("Session DF: %s", session_analysis_df)
         session_analysis_df["chat_html"] = session_analysis_df[
             ["prompts", "output"]
         ].apply(
@@ -580,7 +583,7 @@ class MLflowCallbackHandler(BaseMetadataCallbackHandler, BaseCallbackHandler):
         from mlflow.models import Model
         from langchain import callbacks as cb
         Model.log(
-            self.temp_dir.name,
+            "model",
             cb.mlflow_callback,
             langchain_asset=langchain_asset,
             action_records=action_records_table,
